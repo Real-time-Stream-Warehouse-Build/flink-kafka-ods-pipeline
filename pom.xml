@@ -67,6 +67,14 @@
             <!-- 打 fat jar 时打入 -->
         </dependency>
 
+        <!-- ========== Flink RocksDB State Backend (V2.0 精准去重状态后端) ========== -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-statebackend-rocksdb</artifactId>
+            <version>${flink.version}</version>
+            <!-- compile 范围: EmbeddedRocksDBStateBackend 在用户代码中直接 new, 需打入 fat jar -->
+        </dependency>
+
         <!-- ========== Fastjson2 (JSON 解析) ========== -->
         <dependency>
             <groupId>com.alibaba.fastjson2</groupId>
