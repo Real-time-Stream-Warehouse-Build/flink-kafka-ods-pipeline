@@ -214,11 +214,16 @@ public class FlinkOdsJobV2 {
                 ps.setString(12, log.osVersion);
                 ps.setString(13, log.netType);
                 ps.setString(14, log.extJson);
-                ps.setObject(15, log.lateMs);                          // V2 诊断字段
+                // V2 诊断字段: 显式 null 保护 (某些 MySQL JDBC 版本对 setObject(null) 处理不一致)
+                if (log.lateMs != null) {
+                    ps.setLong(15, log.lateMs);
+                } else {
+                    ps.setNull(15, java.sql.Types.BIGINT);
+                }
                 if (log.sourceWatermarkMs != null) {
                     ps.setTimestamp(16, new Timestamp(log.sourceWatermarkMs));
                 } else {
-                    ps.setTimestamp(16, null);
+                    ps.setNull(16, java.sql.Types.TIMESTAMP);
                 }
                 ps.setTimestamp(17, new Timestamp(System.currentTimeMillis()));
             }
