@@ -59,6 +59,14 @@ public class OdsUserActionLog implements Serializable {
     /** 扩展字段 JSON (原始 JSON 中未知 key 的快照) */
     public String extJson;
 
+    // ========== V2.0 新增: 迟到诊断字段 (仅 FlinkOdsJobV2 填充, V1 默认为 null) ==========
+
+    /** 迟到毫秒数 = watermark - event_time (仅迟到数据有值) */
+    public Long lateMs;
+
+    /** 该条数据被判定迟到时的 watermark 毫秒值 (仅迟到数据有值) */
+    public Long sourceWatermarkMs;
+
     @Override
     public String toString() {
         return "OdsUserActionLog{" +

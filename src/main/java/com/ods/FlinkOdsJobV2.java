@@ -135,7 +135,7 @@ public class FlinkOdsJobV2 {
         // --- RocksDB Embedded State Backend (开启增量 checkpoint) ---
         EmbeddedRocksDBStateBackend rocksBackend = new EmbeddedRocksDBStateBackend(true); // incremental=true
         rocksBackend.setCompressionEnabled(true);     // 压缩 SST 文件, 省磁盘
-        rocksBackend.setLocalRocksDbDirectory(null);  // null = 用 Flink 临时目录
+        // 注: 不调用 setLocalRocksDbDirectory() 时 Flink 自动用临时目录, 兼容 Flink 1.17
         env.setStateBackend(rocksBackend);
 
         LOG.info("========== Flink ODS Job V2.0 Starting ==========");
@@ -190,9 +190,54 @@ public class FlinkOdsJobV2 {
                 .process(new DedupKeyedProcessFn())
                 .name("rocksdb-dedup");
 
-        // 迟到数据侧输出 → 单独写 MySQL 迟到表
+        // 迟到数据侧输出 → 专用 JdbcSink (17 列, 含 late_ms + source_watermark)
+        String lateInsertSql = "INSERT INTO " + MYSQL_TABLE_LATE + " " +
+                "(user_id, event_type, event_time, app_id, device_id, " +
+                "page, referrer, product_id, duration_ms, ip, os_type, os_version, " +
+                "net_type, ext_json, late_ms, source_watermark, etl_time) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+
+        JdbcStatementBuilder<OdsUserActionLog> lateStatementBuilder = new JdbcStatementBuilder<OdsUserActionLog>() {
+            @Override
+            public void accept(PreparedStatement ps, OdsUserActionLog log) throws SQLException {
+                ps.setString(1,  log.userId);
+                ps.setString(2,  log.eventType);
+                ps.setTimestamp(3, Timestamp.valueOf(log.eventTime));
+                ps.setString(4,  log.appId);
+                ps.setString(5,  log.deviceId);
+                ps.setString(6,  log.page);
+                ps.setString(7,  log.referrer);
+                ps.setString(8,  log.productId);
+                ps.setLong(9,    log.durationMs == null ? 0L : log.durationMs);
+                ps.setString(10, log.ip);
+                ps.setString(11, log.osType);
+                ps.setString(12, log.osVersion);
+                ps.setString(13, log.netType);
+                ps.setString(14, log.extJson);
+                ps.setObject(15, log.lateMs);                          // V2 诊断字段
+                if (log.sourceWatermarkMs != null) {
+                    ps.setTimestamp(16, new Timestamp(log.sourceWatermarkMs));
+                } else {
+                    ps.setTimestamp(16, null);
+                }
+                ps.setTimestamp(17, new Timestamp(System.currentTimeMillis()));
+            }
+        };
+
+        JdbcExecutionOptions execOpts = JdbcExecutionOptions.builder()
+                .withBatchSize(MYSQL_BATCH)
+                .withBatchIntervalMs(MYSQL_INTERVAL)
+                .withMaxRetries(MYSQL_MAX_RETRY)
+                .build();
+        JdbcConnectionOptions.JdbcConnectionOptionsBuilder connOpts =
+                new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
+                        .withUrl(MYSQL_URL)
+                        .withDriverName("com.mysql.cj.jdbc.Driver")
+                        .withUsername(MYSQL_USER)
+                        .withPassword(MYSQL_PASS);
+
         dedupedStream.getSideOutput(LATE_DATA_TAG)
-                .addSink(buildMysqlJdbcSink(MYSQL_TABLE_LATE))
+                .addSink(JdbcSink.sink(lateInsertSql, lateStatementBuilder, execOpts, connOpts.build()))
                 .name("mysql-late-sink");
 
         // =============== 6. 主链路: 清洗 + 去重后 → MySQL ODS 主表 ===============
@@ -477,13 +522,17 @@ public class FlinkOdsJobV2 {
             long wm      = ctx.timerService().currentWatermark();
 
             if (wm > 0 && eventTs < wm) {
-                // --- 迟到! 走侧输出 ---
+                // --- 迟到! 走侧输出, 并填充诊断字段 ---
                 Long cnt = lateCounter.value();
                 long newCnt = (cnt == null ? 0L : cnt) + 1L;
                 lateCounter.update(newCnt);
 
-                LOG.debug("LATE_DATA detected: eventTime={}, watermark={}, user={}, dedupCount={}",
-                        value.eventTime, wm, value.userId, newCnt);
+                // 诊断字段: 写入 OdsUserActionLog 新字段, 供 late 表 JdbcSink 落库
+                value.lateMs          = wm - eventTs;   // 迟到多少 ms
+                value.sourceWatermarkMs = wm;           // 判定时刻的 watermark
+
+                LOG.debug("LATE_DATA detected: eventTime={}, watermark={}, lateMs={}, user={}, dedupCount={}",
+                        value.eventTime, wm, value.lateMs, value.userId, newCnt);
                 ctx.output(LATE_DATA_TAG, value);
                 return;   // 迟到数据不进入去重, 直接侧输出
             }
