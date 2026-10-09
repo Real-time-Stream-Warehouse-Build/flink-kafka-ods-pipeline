@@ -1,0 +1,31 @@
+{
+  "_comment": "Kafka topic_log 埋点 JSON 样本 - 用于 FlinkOdsJob V1.0 清洗规则验证",
+  "_usage": "kafka-console-producer.sh --broker-list localhost:9092 --topic topic_log < sample_logs.json",
+
+  "normal_samples": [
+    "{\"user_id\":\"U100001\",\"event_type\":\"view\",\"event_time\":\"2025-11-11 09:30:00\",\"app_id\":\"mall_app\",\"device_id\":\"DEV-a1b2c3\",\"page\":\"/product/detail?id=1001\",\"product_id\":\"P1001\",\"duration_ms\":5200,\"ip\":\"192.168.1.100\",\"os_type\":\"Android\",\"os_version\":\"13.0\",\"net_type\":\"WIFI\",\"trace_id\":\"T-20251111-001\"}",
+    "{\"user_id\":\"U100002\",\"event_type\":\"pay\",\"event_time\":\"2025-11-11 09:30:05\",\"app_id\":\"h5\",\"device_id\":\"DEV-d4e5f6\",\"page\":\"/pay\",\"product_id\":\"P2002\",\"duration_ms\":8000,\"ip\":\"10.0.0.55\",\"os_type\":\"iOS\",\"os_version\":\"17.1\",\"net_type\":\"5G\"}",
+    "{\"user_id\":\"U100003\",\"event_type\":\"click\",\"event_time\":\"2025-11-11T09:30:10\",\"app_id\":\"mini_program\",\"device_id\":\"DEV-7890ab\",\"page\":\"/home\",\"duration_ms\":0,\"os_type\":\"Web\",\"net_type\":\"WIFI\",\"session_id\":\"S-abc123\"}"
+  ],
+
+  "dirty_samples": {
+    "parse_error":    "{\"user_id\":\"U999\",\"event_type\":\"view\",\"app_id\":\"mall_app\"",
+    "missing_user_id":     "{\"event_type\":\"click\",\"event_time\":\"2025-11-11 00:00:00\",\"app_id\":\"mall_app\"}",
+    "missing_event_type":  "{\"user_id\":\"U888\",\"event_time\":\"2025-11-11 00:00:00\",\"app_id\":\"mall_app\"}",
+    "missing_event_time":  "{\"user_id\":\"U777\",\"event_type\":\"cart\",\"app_id\":\"mall_app\"}",
+    "future_event_time":  "{\"user_id\":\"U666\",\"event_type\":\"pay\",\"event_time\":\"2099-11-11 00:00:00\",\"app_id\":\"mall_app\"}",
+    "too_old_event_time": "{\"user_id\":\"U555\",\"event_type\":\"view\",\"event_time\":\"1999-01-01 00:00:00\",\"app_id\":\"h5\"}",
+    "invalid_app_id":     "{\"user_id\":\"U444\",\"event_type\":\"click\",\"event_time\":\"2025-11-11 00:00:00\",\"app_id\":\"pc_web\"}",
+    "empty_app_id":       "{\"user_id\":\"U333\",\"event_type\":\"cart\",\"event_time\":\"2025-11-11 00:00:00\",\"app_id\":\"\"}",
+    "empty_json":         "{}",
+    "blank":              ""
+  },
+
+  "cleaning_rules_v1": [
+    "1. JSON 格式必须合法 (fastjson2 可解析, 且非 null/空对象)",
+    "2. 必填字段: user_id, event_type, event_time (非空且 trim 后长度 > 0)",
+    "3. event_time 范围: [2020-01-01, now + 1h]  格式: yyyy-MM-dd HH:mm:ss 或 ISO T 分隔",
+    "4. app_id 白名单: mall_app | h5 | mini_program",
+    "5. 所有未命中上述规则的 JSON 走侧输出流 dirty-data"
+  ]
+}

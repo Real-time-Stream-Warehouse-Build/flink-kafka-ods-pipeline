@@ -1,0 +1,47 @@
+# ========== Maven ==========
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ========== IDE ==========
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+*.class
+
+# ========== Build Output ==========
+*.jar
+!lib/*.jar
+*.war
+*.nar
+*.ear
+
+# ========== Logs ==========
+*.log
+logs/
+*.out
+*.err
+
+# ========== OS ==========
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ========== Flink State ==========
+flink-state-backends/
+checkpoints/
+savepoints/
+
+# ========== Misc ==========
+.vim/
+*.swp
+*.swo
+*~
