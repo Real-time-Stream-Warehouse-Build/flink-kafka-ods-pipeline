@@ -13,6 +13,7 @@ import org.apache.flink.connector.jdbc.JdbcSink;
 import org.apache.flink.connector.jdbc.JdbcStatementBuilder;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.connector.kafka.source.reader.deserializer.KafkaRecordDeserializationSchema;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -94,7 +95,7 @@ public class FlinkOdsJob {
                 .setTopics(KAFKA_TOPIC)
                 .setGroupId(KAFKA_GROUP)
                 .setStartingOffsets(OffsetsInitializer.latest())
-                .setDeserializer(KafkaRecordDeserializationSchema.valueOnly())
+                .setDeserializer(KafkaRecordDeserializationSchema.valueOnly(new SimpleStringSchema()))
                 .setProperties(kafkaProps)
                 .build();
 

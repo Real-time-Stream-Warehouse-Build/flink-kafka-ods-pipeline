@@ -45,6 +45,13 @@
             <version>3.1.0-1.17</version>
         </dependency>
 
+        <!-- ========== Kafka Clients (显式引入: DirtyLogProducer 直接用 KafkaProducer) ========== -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>${kafka.version}</version>
+        </dependency>
+
         <!-- ========== Flink JDBC Connector (MySQL Sink) ========== -->
         <dependency>
             <groupId>org.apache.flink</groupId>
