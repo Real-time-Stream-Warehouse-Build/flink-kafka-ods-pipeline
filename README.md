@@ -1,38 +1,40 @@
-# Real-time-stream-processing-and-data-warehouse-development
-基于 Flink/Kafka/HBase 的实时流计算与数仓建设核心实战
-# 实时流计算与数仓建设 (Real-time Stream Computing and Data Warehouse Construction)
+# 项目 1：基于 Flink + Kafka 的实时电商流量治理与数仓 ODS 层建设
+**Project 1: Real-time E-commerce Traffic Governance & ODS Construction**
 
-## 仓库简介
-本仓库聚焦于**大数据开发核心**，涵盖实时流计算、数据湖入仓、智能风控预测、推荐系统召回及底层存储调度。通过四个递进式实战项目，呈现从数据清洗（ODS层）到业务应用（预测/推荐）再到集群自优化的全链路能力。
+## 项目概述
+本项目属于【第一组：实时流计算与数仓建设（大数据开发核心）】的实战模块。核心目标是解决双 11 等大促场景下，APP 埋点日志乱序、脏数据频发导致的 BI 看板数据漂移问题。通过构建实时清洗层，将杂乱无章的用户行为转化为结构化的 ODS 层数据，确保数据时间的准确性与流式写入的“精确一次”语义。
 
-## 核心项目列表
+## 关联课程
+- 《大数据平台技术》
+- 《计算机网络》
+- 《数据库原理》
 
-### 项目 1：基于 Flink + Kafka 的实时电商流量治理与数仓 ODS 层建设
-- **业务背景**：双11大促埋点乱序/脏数据频发，需构建实时清洗层，保障 BI 看板准确。
-- **核心技术**：Java, Flink, Kafka, Watermark, RocksDB 状态后端, Hudi/Iceberg, CDC。
-- **迭代亮点**：JSON解析过滤 -> 乱序处理与精准去重 -> 湖格式实时入仓（精确一次语义，解决小文件问题）。
-- **交付物**：Flink SQL 源码、数据血缘图、Prometheus+Grafana 监控 Dashboard。
+## 业务故事
+双 11 大促期间，高并发请求导致 APP 埋点日志出现严重乱序与脏数据，下游 BI 看板发生数据漂移。亟需构建一套基于 Flink 的实时流量治理体系，完成数据清洗、乱序处理、精准去重，并最终对接数据湖格式实现稳定入仓。
 
-### 项目 2：美团风格——智能配送订单的“超时风险”实时预测与熔断
-- **业务背景**：恶劣天气运力紧张，基于 GPS/路况提前 10 分钟预测超时并触发改派/赔付。
-- **核心技术**：Python, Pandas, XGBoost/LightGBM, Flink CEP, Redis, A/B Test。
-- **迭代亮点**：离线静态阈值 -> 在线推理与复杂事件处理(CEP) -> 特征 Pipeline 化与秒级决策。
-- **交付物**：特征存储设计、离线训练 Notebook、实时打分混合服务。
+## 技术栈
+- **流计算**：Apache Flink, Kafka
+- **存储与数仓**：MySQL, Hudi, Iceberg, RocksDB
+- **监控与运维**：Prometheus, Grafana
+- **核心能力**：Watermark 乱序处理、CDC 实时入湖、数据血缘、数据质量监控
 
-### 项目 3：B站/抖音风格——“冷启动”视频的实时推荐召回池构建
-- **业务背景**：新视频无交互历史，利用多模态信息（标题/OCR/音频）构建内容召回向量池。
-- **核心技术**：PaddleNLP, Faiss, Flink, 向量检索, 近线(Near-line)计算。
-- **迭代亮点**：暴力全量检索 -> 实时索引更新与混合过滤 -> 解决读写锁冲突，毫秒级(<50ms)召回。
-- **交付物**：gRPC 向量召回接口、索引自动更新脚本、全链路压测报告(QPS>5000)。
+## 迭代计划
 
-### 项目 4：万亿级 HBase 集群的“Region 热点”自动感知与分裂预调度
-- **业务背景**：IoT 百万设备接入，Rowkey 设计不合理导致 RegionServer 热点与 Full GC。
-- **核心技术**：HBase, Redis, Coprocessor, Salt 盐值预分区, OS 负载感知。
-- **迭代亮点**：人工监控手动 Split -> 盐值预分区打散 -> 自适应负载感知调度与故障自愈。
-- **交付物**：HBase 辅助运维工具包、Rowkey 设计白皮书、混沌工程演练报告。
+### V1.0：基础接入与清洗
+使用 Java + Flink 读取 Kafka，完成简单的 JSON 解析和字段过滤，清洗后写入 MySQL 供临时查询。
+- **核心**：Kafka Source -> JSON Parsing -> Filter -> MySQL Sink
 
-## 技术栈总览
-- **流计算**：Apache Flink, Kafka, Flink CEP
-- **存储与数仓**：HBase, MySQL, Redis, Hudi, Iceberg, Faiss
-- **算法与机器学习**：XGBoost, LightGBM, PaddleNLP, 向量检索
-- **监控与运维**：Prometheus, Grafana, RocksDB, Linux OS 指标
+### V2.0：乱序处理与精准去重
+引入 Watermark 处理乱序数据，实现迟到数据的侧输出流；利用 Flink 状态后端（RocksDB）进行精准去重。
+- **核心**：Watermark -> Side Output -> RocksDB Stateful Deduplication
+
+### V3.0：湖格式入仓与优化
+对接 Hudi/Iceberg 湖格式，实现 CDC 实时入湖，保证流式写入的“精确一次”语义，并解决小文件合并导致的 NameNode 压力问题。
+- **核心**：Hudi/Iceberg -> CDC -> Exactly-Once -> Small File Merge
+
+## 交付物清单
+- **Flink SQL 作业源码**：覆盖 V1.0 - V3.0 迭代逻辑
+- **数据血缘关系图**：全链路数据流向与依赖可视化
+- **数据质量监控 Dashboard**：基于 Prometheus + Grafana 的实时监控配置
+
+## 目录结构（建议）
